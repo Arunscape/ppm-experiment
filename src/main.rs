@@ -31,7 +31,7 @@ impl PPM {
             self.width, self.height
         )?;
 
-        buf.write(&self.image)?;
+        buf.write_all(&self.image)?;
         Ok(())
     }
 
@@ -39,17 +39,47 @@ impl PPM {
     /// 0, 0 is top left corner
     /// increasing x means going right
     /// increasing y means going down
-    pub fn set_pixel_unchecked(&mut self, point: Point, colour: Colour) {
-        let Point(x, y) = point;
+    pub fn set_pixel_unchecked(&mut self, point: &Point, colour: &Colour) {
+        let Point(x, y) = *point;
         let x = x as usize;
         let y = y as usize;
         let index = x + y * self.width;
         let index = index * 3;
-        let Colour(r, g, b) = colour;
+        let Colour(r, g, b) = *colour;
 
         self.image[index] = r;
         self.image[index + 1] = g;
         self.image[index + 2] = b;
+    }
+
+    pub fn draw_line(&mut self, start: &Point, end: &Point, colour: &Colour) {
+        let Point(x0, y0) = *start;
+        let Point(x1, y1) = *end;
+
+        // Bresenham's Algorithm variables
+        let mut x = x0;
+        let mut y = y0;
+        let dx = (x1 - x0).abs();
+        let dy = -(y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx + dy;
+
+        loop {
+            self.set_pixel_unchecked(&Point(x, y), colour);
+            if x == x1 && y == y1 {
+                break;
+            }
+            let e2 = 2 * err;
+            if e2 >= dy {
+                err += dy;
+                x += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y += sy;
+            }
+        }
     }
 }
 
@@ -66,9 +96,11 @@ fn main() -> Result<(), anyhow::Error> {
         for y in 0..1080 {
             let colour = Colour(0xFF, 0x00, 0x00);
             let point = Point(x, y);
-            f.set_pixel_unchecked(point, colour);
+            f.set_pixel_unchecked(&point, &colour);
         }
     }
+
+    f.draw_line(&Point(69, 69), &Point(420, 420), &Colour(0x00, 0xFF, 0x00));
     f.save()?;
     Ok(())
 }
